@@ -1,61 +1,80 @@
 const socket = io();
 
-let isim = "";
-while (!isim || isim.trim() === "") {
-    isim = prompt("Kuzenler Kapışıyor'a Hoş Geldin! Lütfen bir isim gir:");
-}
-socket.emit('oyunaKatil', isim);
+// SESLER (Daha güvenilir linkler)
+const sesAt = new Audio('https://www.soundjay.com/buttons/sounds/button-20.mp3');
+const sesCek = new Audio('https://www.soundjay.com/buttons/sounds/button-21.mp3');
+const sesMesaj = new Audio('https://www.soundjay.com/buttons/sounds/button-16.mp3');
 
+let isim = "";
+while (!isim || !isim.trim()) {
+    isim = prompt("Kuzenler Kapışıyor! İsmin nedir?");
+}
+socket.emit('oyunaKatil', isim.trim());
+
+const mesajlarDiv = document.getElementById('mesajlar');
+const mesajInput = document.getElementById('mesaj-metni');
+const mesajGonderBtn = document.getElementById('mesaj-gonder');
+
+// MESAJLAŞMA
+mesajGonderBtn.onclick = () => {
+    if (mesajInput.value.trim()) {
+        socket.emit('mesajGonder', mesajInput.value);
+        mesajInput.value = '';
+    }
+};
+mesajInput.onkeypress = (e) => { if (e.key === 'Enter') mesajGonderBtn.click(); };
+
+socket.on('yeniMesaj', (data) => {
+    const m = document.createElement('div');
+    m.innerHTML = `<b>${data.isim}:</b> ${data.metin}`;
+    mesajlarDiv.appendChild(m);
+    mesajlarDiv.scrollTop = mesajlarDiv.scrollHeight;
+    sesMesaj.play().catch(() => {});
+});
+
+// OYUN MANTIĞI
 const oyuncuListesi = document.getElementById('oyuncu-listesi');
 const kartlarimDiv = document.getElementById('kartlarim');
 const ortadakiKartDiv = document.getElementById('ortadaki-kart');
 const desteCekBtn = document.getElementById('deste-cek');
-const digerOyuncularDiv = document.getElementById('diger-oyuncular');
 const renkSeciciEkran = document.getElementById('renk-secici');
-
 let bekleyenKartIndex = -1;
 
 const baslatBtn = document.createElement('button');
-baslatBtn.innerText = '🚀 Oyunu Başlat!';
-baslatBtn.style.cssText = 'padding: 10px 20px; font-size: 18px; background-color: #e74c3c; color: white; border: none; border-radius: 10px; cursor: pointer; margin: 10px; display: none;';
-digerOyuncularDiv.appendChild(baslatBtn);
+baslatBtn.innerText = '🚀 BAŞLAT';
+baslatBtn.style.cssText = 'position:fixed; top:70px; right:20px; padding:10px; background:red; color:white; border-radius:10px; display:none; z-index:100; font-weight:bold;';
+document.body.appendChild(baslatBtn);
 
 const sifirlaBtn = document.createElement('button');
-sifirlaBtn.innerText = '🔄 Oyunu Sıfırla';
-sifirlaBtn.style.cssText = 'padding: 10px 20px; font-size: 16px; background-color: #f39c12; color: white; border: none; border-radius: 10px; cursor: pointer; margin: 10px; display: none;';
-digerOyuncularDiv.appendChild(sifirlaBtn);
+sifirlaBtn.innerText = '🔄 SIFIRLA';
+sifirlaBtn.style.cssText = 'position:fixed; top:70px; left:20px; padding:10px; background:orange; color:white; border-radius:10px; z-index:100; font-weight:bold;';
+document.body.appendChild(sifirlaBtn);
 
-baslatBtn.onclick = () => { socket.emit('oyunuBaslat'); };
-sifirlaBtn.onclick = () => { socket.emit('oyunuSifirla'); };
+baslatBtn.onclick = () => socket.emit('oyunuBaslat');
+sifirlaBtn.onclick = () => socket.emit('oyunuSifirla');
 
 socket.on('oyuncuGuncelleme', (players) => {
     oyuncuListesi.innerHTML = '';
     for (let id in players) {
         const p = players[id];
         const li = document.createElement('li');
-        let durumYazisi = p.finished ? '🏁 Bitirdi' : (p.kartSayisi !== undefined ? `(${p.kartSayisi} Kart)` : '(İzleyici)');
-        li.innerText = `${p.isHost ? '👑 ' : ''}${p.name} ${durumYazisi}`;
-        if (p.siraOnda) li.style.border = '4px solid #e74c3c'; 
+        li.innerText = `${p.isHost ? '👑 ' : ''}${p.name} (${p.finished ? '🏁' : p.kartSayisi})`;
+        if (p.siraOnda) li.style.borderColor = 'red';
         oyuncuListesi.appendChild(li);
     }
 });
 
 socket.on('oyunDurumu', (durum) => {
-    let amIHost = (socket.id === durum.hostId);
-    baslatBtn.style.display = (amIHost && !durum.basladi) ? 'inline-block' : 'none';
-    sifirlaBtn.style.display = 'inline-block';
-    
+    baslatBtn.style.display = (socket.id === durum.hostId && !durum.basladi) ? 'block' : 'none';
     if (durum.pendingDraw > 0) {
-        desteCekBtn.innerText = `⚠️ Cezayı Çek (${durum.pendingDraw})`;
-        desteCekBtn.style.backgroundColor = '#e74c3c';
-        desteCekBtn.style.animation = 'pulse 1s infinite';
+        desteCekBtn.innerText = `CEZA (${durum.pendingDraw})`;
+        desteCekBtn.style.background = 'red';
     } else {
-        desteCekBtn.innerText = 'Kart Çek';
-        desteCekBtn.style.backgroundColor = '#2c3e50';
-        desteCekBtn.style.animation = 'none';
+        desteCekBtn.innerText = 'ÇEK';
+        desteCekBtn.style.background = '#263238';
     }
-    
     if (durum.ortadakiKart) {
+        if(ortadakiKartDiv.innerText !== durum.ortadakiKart.deger) sesAt.play().catch(() => {});
         ortadakiKartDiv.innerText = durum.ortadakiKart.deger;
         ortadakiKartDiv.className = `kart ortadaki-kart ${durum.ortadakiKart.renk}`;
         if (durum.ortadakiKart.deger.length > 2) ortadakiKartDiv.classList.add('uzun-yazi');
@@ -64,35 +83,37 @@ socket.on('oyunDurumu', (durum) => {
 
 socket.on('elimiGuncelle', (kartlar) => {
     kartlarimDiv.innerHTML = '';
-    kartlar.forEach((kart, index) => {
-        const kartEl = document.createElement('div');
-        kartEl.className = `kart ${kart.renk}`;
-        kartEl.innerText = kart.deger;
-        if (kart.deger.length > 2) kartEl.classList.add('uzun-yazi');
-        kartEl.onclick = () => { 
-            if (kart.renk === 'siyah') {
+    kartlar.forEach((k, index) => {
+        const div = document.createElement('div');
+        div.className = `kart ${k.renk}`;
+        div.innerText = k.deger;
+        if (k.deger.length > 2) div.classList.add('uzun-yazi');
+        div.onclick = () => {
+            if (k.renk === 'siyah') {
                 bekleyenKartIndex = index;
                 renkSeciciEkran.style.display = 'flex';
             } else {
-                socket.emit('kartAt', { index: index, secilenRenk: null }); 
+                socket.emit('kartAt', { index: index, secilenRenk: null });
             }
         };
-        kartlarimDiv.appendChild(kartEl);
+        kartlarimDiv.appendChild(div);
     });
 });
 
-window.renkSecildi = (renk) => {
+window.renkSecildi = (r) => {
     renkSeciciEkran.style.display = 'none';
-    socket.emit('kartAt', { index: bekleyenKartIndex, secilenRenk: renk });
+    socket.emit('kartAt', { index: bekleyenKartIndex, secilenRenk: r });
 };
 
-function gosterBildirim(mesaj) {
-    let toast = document.createElement('div');
-    toast.innerText = mesaj;
-    toast.style.cssText = 'position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background-color: #c0392b; color: white; padding: 15px 25px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.4); z-index: 10000; font-weight: bold; text-align: center; font-family: sans-serif;';
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 4000);
-}
+desteCekBtn.onclick = () => {
+    sesCek.play().catch(() => {});
+    socket.emit('kartCek');
+};
 
-desteCekBtn.onclick = () => { socket.emit('kartCek'); };
-socket.on('hata', (mesaj) => { gosterBildirim(mesaj); });
+socket.on('hata', (m) => {
+    const t = document.createElement('div');
+    t.innerText = m;
+    t.style.cssText = 'position:fixed; top:10px; left:50%; transform:translateX(-50%); background:#333; color:white; padding:10px; border-radius:10px; z-index:10000;';
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+});
