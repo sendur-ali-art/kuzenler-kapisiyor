@@ -7,9 +7,9 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="renk-secici" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; flex-direction: column;">
-        <h2 style="color: white; margin-bottom: 20px; font-size: 32px;">Oyunun Rengi Ne Olsun?</h2>
-        <div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; padding: 20px;">
+    <div id="renk-secici" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; justify-content: center; align-items: center; flex-direction: column;">
+        <h2 style="color: white; margin-bottom: 20px; font-size: 28px;">Bir Renk Seç!</h2>
+        <div style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;">
             <div class="kart kirmizi" onclick="renkSecildi('kirmizi')">Kırmızı</div>
             <div class="kart mavi" onclick="renkSecildi('mavi')">Mavi</div>
             <div class="kart yesil" onclick="renkSecildi('yesil')">Yeşil</div>
@@ -18,28 +18,28 @@
     </div>
 
     <div id="oyun-alani">
-        <div id="kurallar" style="background-color: #fff3cd; padding: 15px; border-radius: 10px; margin-bottom: 20px; font-size: 14px; color: #856404; text-align: left; border: 1px solid #ffeeba;">
-            <strong style="font-size: 16px;">📜 Kısaca Kurallar:</strong>
-            <ul style="margin-top: 5px; padding-left: 20px; margin-bottom: 0;">
-                <li>Ortadaki kartla aynı <b>renkte</b> veya <b>sayı/sembolde</b> kart atmalısın.</li>
-                <li><b>Siyah kartlar</b> her renge atılabilir ve atan kişi rengi belirler.</li>
-                <li>Elinde uygun kart yoksa desteden <b>1 Kart Çek</b>. İlk bitiren kazanır!</li>
+        <div id="kurallar" style="background-color: #fff3cd; padding: 12px; border-radius: 10px; margin-bottom: 15px; font-size: 13px; color: #856404; text-align: left; border: 1px solid #ffeeba;">
+            <strong>📜 Oyun Kuralları:</strong>
+            <ul style="margin: 5px 0 0 15px; padding: 0;">
+                <li>Aynı <b>renk</b> veya <b>sembolü</b> eşleştir.</li>
+                <li><b>+2 ve +4 birbirini katlar!</b> Elinde varsa cezayı sonrakine fırlat.</li>
+                <li>Cezayı katlayamazsan kırmızı butona basıp <b>kartları çekmelisin.</b></li>
+                <li>Oyun son 1 kişi kalana kadar devam eder.</li>
             </ul>
         </div>
 
         <div id="diger-oyuncular">
-            <h2>Kuzenler Bekleniyor...</h2>
             <ul id="oyuncu-listesi"></ul>
         </div>
 
         <div id="masa">
             <div class="kart deste" id="deste-cek">Kart Çek</div>
-            <div class="kart ortadaki-kart" id="ortadaki-kart">Oyun Başlamadı</div>
+            <div class="kart ortadaki-kart" id="ortadaki-kart">...</div>
         </div>
 
         <div id="benim-elim">
             <h3>Senin Kartların</h3>
-            <div id="kartlarim" class="kart-kutusu"></div>
+            <div id="kartlarim"></div>
         </div>
     </div>
 
