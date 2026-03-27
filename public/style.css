@@ -1,6 +1,6 @@
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #e0f2f1; /* Göz yormayan açık turkuaz bir arka plan */
+    background-color: #e0f2f1;
     text-align: center;
     margin: 0;
     padding: 20px;
@@ -8,7 +8,7 @@ body {
 }
 
 #oyun-alani {
-    max-width: 800px;
+    max-width: 900px;
     margin: 0 auto;
     background: white;
     padding: 20px;
@@ -16,9 +16,7 @@ body {
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
 }
 
-h2, h3 {
-    color: #00695c;
-}
+h2, h3 { color: #00695c; }
 
 #diger-oyuncular ul {
     list-style-type: none;
@@ -44,67 +42,65 @@ h2, h3 {
     align-items: center;
     gap: 30px;
     margin: 40px 0;
-    padding: 20px;
+    padding: 30px;
     background-color: #fafafa;
     border-radius: 15px;
     border: 2px dashed #ccc;
 }
 
-/* Kartların Genel Şekli */
+/* Kartların Genel Şekli BÜYÜTÜLDÜ */
 .kart {
-    width: 80px;
-    height: 120px;
+    width: 100px;
+    height: 150px;
     border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
+    font-size: 42px; /* Rakamlar kocaman oldu */
     font-weight: bold;
     color: white;
     cursor: pointer;
     box-shadow: 2px 2px 8px rgba(0,0,0,0.3);
     transition: transform 0.2s, box-shadow 0.2s;
     user-select: none;
+    text-align: center;
 }
 
-/* Kartın üzerine gelince havaya kalkma animasyonu */
 .kart:hover {
     transform: translateY(-10px); 
     box-shadow: 4px 4px 12px rgba(0,0,0,0.4);
 }
 
-/* Kapalı Deste Görünümü */
+/* Kapalı Deste */
 .deste {
     background-color: #2c3e50;
     color: white;
-    font-size: 16px;
+    font-size: 20px;
     border: 3px solid #1a252f;
 }
 
-.deste:active {
-    transform: scale(0.95); /* Tıklayınca hafifçe küçülür */
-}
+.deste:active { transform: scale(0.95); }
 
-/* Ortaya atılan ilk boş kart */
+/* Ortadaki Kart BÜYÜTÜLDÜ */
 .ortadaki-kart {
     background-color: #ecf0f1;
     color: #7f8c8d;
-    font-size: 14px;
+    font-size: 36px; /* Buradaki küçüklük sorunu çözüldü */
     border: 2px solid #bdc3c7;
 }
 
 /* Oyunun Ana Renkleri */
-.kirmizi { background-color: #e74c3c; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
-.mavi { background-color: #3498db; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
-.yesil { background-color: #2ecc71; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
+.kirmizi { background-color: #e74c3c; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+.mavi { background-color: #3498db; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+.yesil { background-color: #2ecc71; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
 .sari { background-color: #f1c40f; color: #333; }
-.siyah { background-color: #34495e; color: white; font-size: 16px; text-align: center; padding: 5px; }
+.siyah { background-color: #34495e; color: white; font-size: 20px; text-shadow: none; padding: 5px; }
 
 #kartlarim {
     display: flex;
     justify-content: center;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 15px;
     margin-top: 20px;
-    min-height: 130px;
+    min-height: 160px;
 }
