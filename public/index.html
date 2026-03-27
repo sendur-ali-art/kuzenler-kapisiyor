@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
     <title>Kuzenler Kapışıyor</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -18,18 +18,22 @@
     </div>
 
     <div id="oyun-alani">
-        <div id="diger-oyuncular">
-            <ul id="oyuncu-listesi"></ul>
-        </div>
-
+        <div id="diger-oyuncular"><ul id="oyuncu-listesi"></ul></div>
         <div id="masa">
             <div class="kart deste" id="deste-cek">Kart Çek</div>
             <div class="kart ortadaki-kart" id="ortadaki-kart">...</div>
         </div>
-
         <div id="benim-elim">
             <h3>Senin Kartların</h3>
             <div id="kartlarim"></div>
+        </div>
+
+        <div id="chat-kutusu">
+            <div id="mesajlar"></div>
+            <div id="mesaj-input-grubu">
+                <input type="text" id="mesaj-metni" placeholder="Mesaj yaz..." maxlength="100">
+                <button id="mesaj-gonder">Gönder</button>
+            </div>
         </div>
     </div>
 
