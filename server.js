@@ -16,7 +16,6 @@ let direction = 1;
 let gameStarted = false;
 let winners = []; 
 let pendingDraw = 0;
-let pendingDrawType = null;
 
 const renkler = ['kirmizi', 'mavi', 'yesil', 'sari'];
 const degerler = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'Pas', 'Yön Değiştir', '+2'];
@@ -72,12 +71,18 @@ io.on('connection', (socket) => {
         updateAll();
     });
 
+    socket.on('mesajGonder', (metin) => {
+        if(players[socket.id]) {
+            io.emit('yeniMesaj', { isim: players[socket.id].name, metin: metin });
+        }
+    });
+
     socket.on('oyunuSifirla', () => {
         gameStarted = false;
         deck = []; discardPile = []; winners = []; pendingDraw = 0;
         playerIds = Object.keys(players);
         playerIds.forEach(id => { if(players[id]) { players[id].hand = []; players[id].finished = false; } });
-        io.emit('hata', '🔄 Oyun sıfırlandı!');
+        io.emit('hata', '🔄 Sıfırlandı!');
         updateAll();
     });
 
@@ -102,7 +107,7 @@ io.on('connection', (socket) => {
 
         const isPlus = (card.deger === '+2' || card.deger === '+4 Çek');
         if (pendingDraw > 0 && !isPlus) {
-            socket.emit('hata', '⚠️ Cezayı katlamalı veya çekmelisin!');
+            socket.emit('hata', '⚠️ Cezayı çekmelisin!');
             return;
         }
 
@@ -116,20 +121,17 @@ io.on('connection', (socket) => {
         if (card.renk === 'siyah' && data.secilenRenk) card.renk = data.secilenRenk;
         discardPile.push(card);
 
-        // TEK KART UYARISI
-        if (p.hand.length === 1) {
-            io.emit('hata', `🔔 DİKKAT: ${p.name} tek kart kaldı!`);
-        }
+        if (p.hand.length === 1) io.emit('hata', `🔔 ${p.name} TEK KART!`);
 
-        if (card.deger === '+2') { pendingDraw += 2; pendingDrawType = '+2'; }
-        if (card.deger === '+4 Çek') { pendingDraw += 4; pendingDrawType = '+4 Çek'; }
+        if (card.deger === '+2') pendingDraw += 2;
+        if (card.deger === '+4 Çek') pendingDraw += 4;
 
         if (p.hand.length === 0) {
             p.finished = true;
             winners.push(p);
             if (playerIds.filter(id => !players[id].finished).length <= 1) {
                 gameStarted = false;
-                io.emit('hata', '🏆 OYUN BİTTİ! ' + winners.map((w,i)=>`${i+1}.${w.name}`).join(' '));
+                io.emit('hata', '🏆 OYUN BİTTİ!');
             }
         }
 
@@ -148,7 +150,7 @@ io.on('connection', (socket) => {
                 if(deck.length === 0) deck = createDeck();
                 p.hand.push(deck.pop());
             }
-            pendingDraw = 0; pendingDrawType = null;
+            pendingDraw = 0;
         } else {
             if(deck.length === 0) deck = createDeck();
             p.hand.push(deck.pop());
