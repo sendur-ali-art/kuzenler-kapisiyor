@@ -62,26 +62,19 @@ function nextTurn() {
 io.on('connection', (socket) => {
     socket.on('oyunaKatil', (isim) => {
         if (gameStarted) {
-            socket.emit('hata', 'Oyun şu an devam ediyor. Ortadan oyuna giremezsin ama masayı izleyebilirsin. Oynamak istersen oyunu sıfırlayın.');
+            socket.emit('hata', 'Oyun şu an devam ediyor. Masayı izleyebilirsin. Oynamak istersen oyunu sıfırlayın.');
         }
         players[socket.id] = { id: socket.id, name: isim, hand: [] };
-        // Oyun başlamadıysa aktif oyuncu listesine ekle
-        if (!gameStarted) {
-            playerIds.push(socket.id);
-        }
+        if (!gameStarted) playerIds.push(socket.id);
         updateAll();
     });
 
     socket.on('oyunuSifirla', () => {
         gameStarted = false;
-        deck = [];
-        discardPile = [];
-        // Herkesi tekrar aktif oyuncu listesine al
+        deck = []; discardPile = [];
         playerIds = Object.keys(players);
-        for (let id of playerIds) {
-            if(players[id]) players[id].hand = [];
-        }
-        io.emit('hata', 'Oyun sıfırlandı! Yeni katılanlar masaya alındı. Şimdi herkes oyunu başlatabilir.');
+        for (let id of playerIds) { if(players[id]) players[id].hand = []; }
+        io.emit('hata', 'Oyun sıfırlandı! Yeni katılanlar masaya alındı.');
         updateAll();
     });
 
@@ -96,12 +89,10 @@ io.on('connection', (socket) => {
         currentPlayerIndex = 0;
         direction = 1;
 
-        for (let id of playerIds) {
-            players[id].hand = deck.splice(0, 7);
-        }
+        for (let id of playerIds) { players[id].hand = deck.splice(0, 7); }
 
         let firstCard = deck.pop();
-        while (firstCard.renk === 'siyah') { 
+        while (firstCard.renk === 'siyah' || isNaN(firstCard.deger)) { 
             deck.push(firstCard);
             deck = deck.sort(() => Math.random() - 0.5);
             firstCard = deck.pop();
@@ -112,13 +103,16 @@ io.on('connection', (socket) => {
         io.emit('hata', 'Oyun Başladı! İlk Sıra: ' + players[playerIds[currentPlayerIndex]].name);
     });
 
-    socket.on('kartAt', (kartIndex) => {
+    socket.on('kartAt', (data) => {
         if (!gameStarted) return;
         if (playerIds[currentPlayerIndex] !== socket.id) {
-            socket.emit('hata', 'Acele etme, sıra sende değil! 😅');
+            socket.emit('hata', 'Sıra sende değil!');
             return;
         }
 
+        let kartIndex = data.index;
+        let secilenRenk = data.secilenRenk;
+        
         let p = players[socket.id];
         let playedCard = p.hand[kartIndex];
         let topCard = discardPile[discardPile.length - 1];
@@ -126,7 +120,6 @@ io.on('connection', (socket) => {
         let isValid = false;
         if (playedCard.renk === 'siyah') isValid = true; 
         else if (playedCard.renk === topCard.renk || playedCard.deger === topCard.deger) isValid = true;
-        else if (topCard.renk === 'siyah') isValid = true; 
 
         if (!isValid) {
             socket.emit('hata', 'Bu kartı atamazsın! Renk veya sembol eşleşmeli.');
@@ -134,6 +127,11 @@ io.on('connection', (socket) => {
         }
 
         p.hand.splice(kartIndex, 1);
+        
+        if (playedCard.renk === 'siyah' && secilenRenk) {
+            playedCard.renk = secilenRenk; 
+        }
+        
         discardPile.push(playedCard);
 
         if (p.hand.length === 1) io.emit('hata', '🔔 DİKKAT: ' + p.name + ' TEK KART KALDI!');
@@ -170,8 +168,7 @@ io.on('connection', (socket) => {
     socket.on('kartCek', () => {
         if (!gameStarted) return;
         if (playerIds[currentPlayerIndex] !== socket.id) {
-            socket.emit('hata', 'Sıra sende değil!');
-            return;
+            socket.emit('hata', 'Sıra sende değil!'); return;
         }
         if (deck.length === 0) {
             let topCard = discardPile.pop();
@@ -188,20 +185,15 @@ io.on('connection', (socket) => {
         delete players[socket.id];
         
         if (disconnectedIndex !== -1) {
-            playerIds.splice(disconnectedIndex, 1); // Oyuncuyu sıradan çıkar
-            
+            playerIds.splice(disconnectedIndex, 1);
             if (gameStarted) {
                 if (playerIds.length < 2) {
                     gameStarted = false;
-                    io.emit('hata', 'Yeterli oyuncu kalmadığı için oyun durduruldu. Lütfen oyunu sıfırlayın.');
+                    io.emit('hata', 'Oyuncu yetersiz, oyun durduruldu.');
                 } else {
-                    // Kapanan oyuncu yüzünden sıranın kaymasını düzelt
-                    if (disconnectedIndex < currentPlayerIndex) {
-                        currentPlayerIndex--;
-                    } else if (currentPlayerIndex >= playerIds.length) {
-                        currentPlayerIndex = 0;
-                    }
-                    io.emit('hata', 'Bir oyuncu düştü! Sıra düzenlendi, oyuna devam edebilirsiniz.');
+                    if (disconnectedIndex < currentPlayerIndex) currentPlayerIndex--;
+                    else if (currentPlayerIndex >= playerIds.length) currentPlayerIndex = 0;
+                    io.emit('hata', 'Bir oyuncu düştü! Sıra düzenlendi.');
                 }
             }
         }
@@ -210,6 +202,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`Sunucu çalışıyor! Port: ${PORT}`);
-});
+server.listen(PORT, () => { console.log(`Sunucu çalışıyor! Port: ${PORT}`); });
