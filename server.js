@@ -8,7 +8,6 @@ const io = new Server(server);
 
 app.use(express.static('public'));
 
-// Oyun verileri
 let players = {};
 let playerIds = []; 
 let deck = [];
@@ -20,45 +19,40 @@ let gameStarted = false;
 const renkler = ['kirmizi', 'mavi', 'yesil', 'sari'];
 const degerler = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'Pas', 'Yön Değiştir', '+2'];
 
-// Desteyi Oluşturma ve Karıştırma
 function createDeck() {
     let newDeck = [];
     for (let renk of renkler) {
         for (let deger of degerler) {
             newDeck.push({ renk: renk, deger: deger });
-            if (deger !== '0') newDeck.push({ renk: renk, deger: deger }); // 0 hariç her karttan ikişer tane
+            if (deger !== '0') newDeck.push({ renk: renk, deger: deger });
         }
     }
-    // Siyah (Özel) Kartlar
     for (let i = 0; i < 4; i++) {
         newDeck.push({ renk: 'siyah', deger: 'Renk Seç' });
         newDeck.push({ renk: 'siyah', deger: '+4 Çek' });
     }
-    // Desteyi Karıştır
     return newDeck.sort(() => Math.random() - 0.5);
 }
 
-// Tüm ekranları güncelle
 function updateAll() {
     for (let i = 0; i < playerIds.length; i++) {
         const id = playerIds[i];
-        players[id].kartSayisi = players[id].hand ? players[id].hand.length : 0;
-        players[id].siraOnda = (i === currentPlayerIndex && gameStarted);
+        if (players[id]) {
+            players[id].kartSayisi = players[id].hand ? players[id].hand.length : 0;
+            players[id].siraOnda = (i === currentPlayerIndex && gameStarted);
+        }
     }
-    
     io.emit('oyuncuGuncelleme', players);
-    
     let ortadaki = discardPile[discardPile.length - 1] || null;
     io.emit('oyunDurumu', { basladi: gameStarted, ortadakiKart: ortadaki });
 
     for (let id of playerIds) {
-        if (players[id].hand) {
+        if (players[id] && players[id].hand) {
             io.to(id).emit('elimiGuncelle', players[id].hand);
         }
     }
 }
 
-// Sırayı bir sonrakine geçir
 function nextTurn() {
     currentPlayerIndex += direction;
     if (currentPlayerIndex >= playerIds.length) currentPlayerIndex = 0;
@@ -66,15 +60,31 @@ function nextTurn() {
 }
 
 io.on('connection', (socket) => {
-    players[socket.id] = { id: socket.id, name: 'Bekleniyor...', hand: [] };
-    playerIds.push(socket.id);
-
     socket.on('oyunaKatil', (isim) => {
-        players[socket.id].name = isim;
+        if (gameStarted) {
+            socket.emit('hata', 'Oyun şu an devam ediyor. Ortadan oyuna giremezsin ama masayı izleyebilirsin. Oynamak istersen oyunu sıfırlayın.');
+        }
+        players[socket.id] = { id: socket.id, name: isim, hand: [] };
+        // Oyun başlamadıysa aktif oyuncu listesine ekle
+        if (!gameStarted) {
+            playerIds.push(socket.id);
+        }
         updateAll();
     });
 
-    // Oyunu Başlat
+    socket.on('oyunuSifirla', () => {
+        gameStarted = false;
+        deck = [];
+        discardPile = [];
+        // Herkesi tekrar aktif oyuncu listesine al
+        playerIds = Object.keys(players);
+        for (let id of playerIds) {
+            if(players[id]) players[id].hand = [];
+        }
+        io.emit('hata', 'Oyun sıfırlandı! Yeni katılanlar masaya alındı. Şimdi herkes oyunu başlatabilir.');
+        updateAll();
+    });
+
     socket.on('oyunuBaslat', () => {
         if (gameStarted || playerIds.length < 2) {
             socket.emit('hata', 'Oyunun başlaması için en az 2 kişi olmalı!');
@@ -86,12 +96,10 @@ io.on('connection', (socket) => {
         currentPlayerIndex = 0;
         direction = 1;
 
-        // Herkese 7 kart dağıt
         for (let id of playerIds) {
             players[id].hand = deck.splice(0, 7);
         }
 
-        // Ortaya ilk kartı aç (Siyah denk gelirse desteye geri koyup tekrar çek)
         let firstCard = deck.pop();
         while (firstCard.renk === 'siyah') { 
             deck.push(firstCard);
@@ -104,7 +112,6 @@ io.on('connection', (socket) => {
         io.emit('hata', 'Oyun Başladı! İlk Sıra: ' + players[playerIds[currentPlayerIndex]].name);
     });
 
-    // Oyuncu kart attığında
     socket.on('kartAt', (kartIndex) => {
         if (!gameStarted) return;
         if (playerIds[currentPlayerIndex] !== socket.id) {
@@ -116,27 +123,21 @@ io.on('connection', (socket) => {
         let playedCard = p.hand[kartIndex];
         let topCard = discardPile[discardPile.length - 1];
 
-        // Kurallar: Renk veya Sayı uyuşmalı (Siyah kartlar her şeye atılır)
         let isValid = false;
         if (playedCard.renk === 'siyah') isValid = true; 
         else if (playedCard.renk === topCard.renk || playedCard.deger === topCard.deger) isValid = true;
-        else if (topCard.renk === 'siyah') isValid = true; // Ortada siyah varsa istenen renk atılabilir
+        else if (topCard.renk === 'siyah') isValid = true; 
 
         if (!isValid) {
             socket.emit('hata', 'Bu kartı atamazsın! Renk veya sembol eşleşmeli.');
             return;
         }
 
-        // Kartı elden çıkar, ortaya at
         p.hand.splice(kartIndex, 1);
         discardPile.push(playedCard);
 
-        // "TEK KALDI" Uyarısı
-        if (p.hand.length === 1) {
-            io.emit('hata', '🔔 DİKKAT: ' + p.name + ' TEK KART KALDI!');
-        }
+        if (p.hand.length === 1) io.emit('hata', '🔔 DİKKAT: ' + p.name + ' TEK KART KALDI!');
 
-        // KAZANMA DURUMU
         if (p.hand.length === 0) {
             io.emit('hata', '🏆 TEBRİKLER! ' + p.name + ' KAZANDI!');
             gameStarted = false;
@@ -144,10 +145,9 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // Özel Kartların Etkileri
         if (playedCard.deger === 'Yön Değiştir') {
             direction *= -1;
-            if (playerIds.length === 2) nextTurn(); // 2 kişiyse pas görevi görür
+            if (playerIds.length === 2) nextTurn(); 
         } else if (playedCard.deger === 'Pas') {
             nextTurn();
         } else if (playedCard.deger === '+2') {
@@ -167,33 +167,43 @@ io.on('connection', (socket) => {
         updateAll();
     });
 
-    // Oyuncu kart çektiğinde
     socket.on('kartCek', () => {
         if (!gameStarted) return;
         if (playerIds[currentPlayerIndex] !== socket.id) {
             socket.emit('hata', 'Sıra sende değil!');
             return;
         }
-
-        // Deste bittiyse ortadaki kartları karıştırıp yeni deste yap
         if (deck.length === 0) {
             let topCard = discardPile.pop();
             deck = discardPile.sort(() => Math.random() - 0.5);
             discardPile = [topCard];
         }
-
         players[socket.id].hand.push(deck.pop());
         nextTurn();
         updateAll();
     });
 
-    // Biri oyundan çıktığında
     socket.on('disconnect', () => {
+        let disconnectedIndex = playerIds.indexOf(socket.id);
         delete players[socket.id];
-        playerIds = playerIds.filter(id => id !== socket.id);
-        if (playerIds.length < 2 && gameStarted) {
-            gameStarted = false;
-            io.emit('hata', 'Yeterli oyuncu kalmadığı için oyun iptal oldu.');
+        
+        if (disconnectedIndex !== -1) {
+            playerIds.splice(disconnectedIndex, 1); // Oyuncuyu sıradan çıkar
+            
+            if (gameStarted) {
+                if (playerIds.length < 2) {
+                    gameStarted = false;
+                    io.emit('hata', 'Yeterli oyuncu kalmadığı için oyun durduruldu. Lütfen oyunu sıfırlayın.');
+                } else {
+                    // Kapanan oyuncu yüzünden sıranın kaymasını düzelt
+                    if (disconnectedIndex < currentPlayerIndex) {
+                        currentPlayerIndex--;
+                    } else if (currentPlayerIndex >= playerIds.length) {
+                        currentPlayerIndex = 0;
+                    }
+                    io.emit('hata', 'Bir oyuncu düştü! Sıra düzenlendi, oyuna devam edebilirsiniz.');
+                }
+            }
         }
         updateAll();
     });
