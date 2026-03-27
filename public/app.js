@@ -11,31 +11,18 @@ const kartlarimDiv = document.getElementById('kartlarim');
 const ortadakiKartDiv = document.getElementById('ortadaki-kart');
 const desteCekBtn = document.getElementById('deste-cek');
 const digerOyuncularDiv = document.getElementById('diger-oyuncular');
+const renkSeciciEkran = document.getElementById('renk-secici');
 
-// Başlat Butonu
+let bekleyenKartIndex = -1;
+
 const baslatBtn = document.createElement('button');
 baslatBtn.innerText = '🚀 Oyunu Başlat!';
-baslatBtn.style.padding = '10px 20px';
-baslatBtn.style.fontSize = '18px';
-baslatBtn.style.backgroundColor = '#e74c3c';
-baslatBtn.style.color = 'white';
-baslatBtn.style.border = 'none';
-baslatBtn.style.borderRadius = '10px';
-baslatBtn.style.cursor = 'pointer';
-baslatBtn.style.margin = '10px';
+baslatBtn.style.cssText = 'padding: 10px 20px; font-size: 18px; background-color: #e74c3c; color: white; border: none; border-radius: 10px; cursor: pointer; margin: 10px;';
 digerOyuncularDiv.appendChild(baslatBtn);
 
-// Sıfırla (Kurtarıcı) Butonu
 const sifirlaBtn = document.createElement('button');
 sifirlaBtn.innerText = '🔄 Oyunu Sıfırla (Hata Çıkarsa)';
-sifirlaBtn.style.padding = '10px 20px';
-sifirlaBtn.style.fontSize = '16px';
-sifirlaBtn.style.backgroundColor = '#f39c12';
-sifirlaBtn.style.color = 'white';
-sifirlaBtn.style.border = 'none';
-sifirlaBtn.style.borderRadius = '10px';
-sifirlaBtn.style.cursor = 'pointer';
-sifirlaBtn.style.margin = '10px';
+sifirlaBtn.style.cssText = 'padding: 10px 20px; font-size: 16px; background-color: #f39c12; color: white; border: none; border-radius: 10px; cursor: pointer; margin: 10px;';
 digerOyuncularDiv.appendChild(sifirlaBtn);
 
 baslatBtn.onclick = () => { socket.emit('oyunuBaslat'); };
@@ -53,17 +40,16 @@ socket.on('oyuncuGuncelleme', (players) => {
 });
 
 socket.on('oyunDurumu', (durum) => {
-    if (durum.basladi) {
-        baslatBtn.style.display = 'none';
-    } else {
-        baslatBtn.style.display = 'inline-block';
-        ortadakiKartDiv.innerText = "Bekleniyor";
-        ortadakiKartDiv.className = "kart ortadaki-kart";
-    }
+    if (durum.basladi) baslatBtn.style.display = 'none';
+    else baslatBtn.style.display = 'inline-block';
     
     if (durum.ortadakiKart) {
         ortadakiKartDiv.innerText = durum.ortadakiKart.deger;
         ortadakiKartDiv.className = `kart ortadaki-kart ${durum.ortadakiKart.renk}`;
+        if (durum.ortadakiKart.deger.length > 2) ortadakiKartDiv.classList.add('uzun-yazi');
+    } else {
+        ortadakiKartDiv.innerText = "Bekleniyor";
+        ortadakiKartDiv.className = "kart ortadaki-kart";
     }
 });
 
@@ -73,10 +59,25 @@ socket.on('elimiGuncelle', (kartlar) => {
         const kartEl = document.createElement('div');
         kartEl.className = `kart ${kart.renk}`;
         kartEl.innerText = kart.deger;
-        kartEl.onclick = () => { socket.emit('kartAt', index); };
+        
+        if (kart.deger.length > 2) kartEl.classList.add('uzun-yazi');
+
+        kartEl.onclick = () => { 
+            if (kart.renk === 'siyah') {
+                bekleyenKartIndex = index;
+                renkSeciciEkran.style.display = 'flex';
+            } else {
+                socket.emit('kartAt', { index: index, secilenRenk: null }); 
+            }
+        };
         kartlarimDiv.appendChild(kartEl);
     });
 });
+
+window.renkSecildi = (renk) => {
+    renkSeciciEkran.style.display = 'none';
+    socket.emit('kartAt', { index: bekleyenKartIndex, secilenRenk: renk });
+};
 
 desteCekBtn.onclick = () => { socket.emit('kartCek'); };
 socket.on('hata', (mesaj) => { alert(mesaj); });
