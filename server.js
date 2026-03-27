@@ -16,7 +16,6 @@ let direction = 1;
 let gameStarted = false;
 let winners = []; 
 let pendingDraw = 0;
-let pendingDrawType = null; 
 
 const renkler = ['kirmizi', 'mavi', 'yesil', 'sari'];
 const degerler = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'Pas', 'Yön Değiştir', '+2'];
@@ -58,7 +57,7 @@ function nextTurn() {
     do {
         currentPlayerIndex = (currentPlayerIndex + direction + playerIds.length) % playerIds.length;
         loop++;
-    } while (players[playerIds[currentPlayerIndex]].finished && loop < playerIds.length);
+    } while (players[playerIds[currentPlayerIndex]] && players[playerIds[currentPlayerIndex]].finished && loop < playerIds.length);
 }
 
 io.on('connection', (socket) => {
@@ -72,7 +71,7 @@ io.on('connection', (socket) => {
         gameStarted = false;
         deck = []; discardPile = []; winners = []; pendingDraw = 0;
         playerIds = Object.keys(players);
-        playerIds.forEach(id => { players[id].hand = []; players[id].finished = false; });
+        playerIds.forEach(id => { if(players[id]) { players[id].hand = []; players[id].finished = false; } });
         io.emit('hata', '🔄 Oyun sıfırlandı!');
         updateAll();
     });
@@ -96,15 +95,20 @@ io.on('connection', (socket) => {
         let playedCard = p.hand[data.index];
         if (!playedCard) return;
 
-        // Ceza katlama kontrolü
-        if (pendingDraw > 0 && playedCard.deger !== pendingDrawType) {
-            socket.emit('hata', 'Cezayı katlamalı veya çekmelisin!');
+        // YENİ KURAL: Herhangi bir + kartı (2 veya 4) cezayı katlar
+        const isPenaltyCard = (playedCard.deger === '+2' || playedCard.deger === '+4 Çek');
+        
+        if (pendingDraw > 0 && !isPenaltyCard) {
+            socket.emit('hata', '💥 Üzerinde ceza var! Ya + kartıyla katlamalı ya da kart çekmelisin!');
             return;
         }
 
         let top = discardPile[discardPile.length - 1];
-        if (playedCard.renk !== 'siyah' && playedCard.renk !== top.renk && playedCard.deger !== top.deger) {
-            socket.emit('hata', 'Geçersiz hamle!');
+        // Siyah kartlar her zaman atılabilir, diğerleri renk veya değer eşleşmeli
+        let isValid = (playedCard.renk === 'siyah' || playedCard.renk === top.renk || playedCard.deger === top.deger);
+
+        if (!isValid) {
+            socket.emit('hata', 'Bu kartı şu an atamazsın!');
             return;
         }
 
@@ -112,15 +116,16 @@ io.on('connection', (socket) => {
         if (playedCard.renk === 'siyah' && data.secilenRenk) playedCard.renk = data.secilenRenk;
         discardPile.push(playedCard);
 
-        if (playedCard.deger === '+2') { pendingDraw += 2; pendingDrawType = '+2'; }
-        else if (playedCard.deger === '+4 Çek') { pendingDraw += 4; pendingDrawType = '+4 Çek'; }
+        // Ceza ekleme
+        if (playedCard.deger === '+2') pendingDraw += 2;
+        else if (playedCard.deger === '+4 Çek') pendingDraw += 4;
 
         if (p.hand.length === 0) {
             p.finished = true;
             winners.push(p);
             if (playerIds.filter(id => !players[id].finished).length <= 1) {
                 gameStarted = false;
-                io.emit('hata', 'Oyun Bitti!');
+                io.emit('hata', '🏁 Oyun Bitti!');
             }
         }
 
@@ -134,14 +139,18 @@ io.on('connection', (socket) => {
     socket.on('kartCek', () => {
         if (!gameStarted || playerIds[currentPlayerIndex] !== socket.id) return;
         let p = players[socket.id];
+        
         if (pendingDraw > 0) {
+            // Cezayı çekmek istediğinde
             for(let i=0; i<pendingDraw; i++) {
-                if(deck.length === 0) { deck = createDeck(); }
+                if(deck.length === 0) deck = createDeck();
                 p.hand.push(deck.pop());
             }
-            pendingDraw = 0; pendingDrawType = null;
+            io.emit('hata', `${p.name} toplam ${pendingDraw} kart ceza çekti! 😱`);
+            pendingDraw = 0;
         } else {
-            if(deck.length === 0) { deck = createDeck(); }
+            // Normal kart çekme
+            if(deck.length === 0) deck = createDeck();
             p.hand.push(deck.pop());
         }
         nextTurn();
