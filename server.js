@@ -16,37 +16,42 @@ let direction = 1;
 let gameStarted = false;
 let winners = []; 
 let pendingDraw = 0;
+let pendingDrawType = null;
 
 const renkler = ['kirmizi', 'mavi', 'yesil', 'sari'];
 const degerler = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'Pas', 'Yön Değiştir', '+2'];
 
 function createDeck() {
-    let newDeck = [];
-    for (let renk of renkler) {
-        for (let deger of degerler) {
-            newDeck.push({ renk: renk, deger: deger });
-            if (deger !== '0') newDeck.push({ renk: renk, deger: deger });
-        }
-    }
+    let d = [];
+    renkler.forEach(r => {
+        degerler.forEach(v => {
+            d.push({ renk: r, deger: v });
+            if (v !== '0') d.push({ renk: r, deger: v });
+        });
+    });
     for (let i = 0; i < 4; i++) {
-        newDeck.push({ renk: 'siyah', deger: 'Renk Seç' });
-        newDeck.push({ renk: 'siyah', deger: '+4 Çek' });
+        d.push({ renk: 'siyah', deger: 'Renk Seç' });
+        d.push({ renk: 'siyah', deger: '+4 Çek' });
     }
-    return newDeck.sort(() => Math.random() - 0.5);
+    return d.sort(() => Math.random() - 0.5);
 }
 
 function updateAll() {
-    let hostId = playerIds[0]; 
+    let hId = playerIds[0]; 
     playerIds.forEach((id, i) => {
         if (players[id]) {
-            players[id].isHost = (id === hostId);
+            players[id].isHost = (id === hId);
             players[id].kartSayisi = players[id].hand ? players[id].hand.length : 0;
             players[id].siraOnda = (i === currentPlayerIndex && gameStarted && !players[id].finished);
         }
     });
     io.emit('oyuncuGuncelleme', players);
-    let ortadaki = discardPile[discardPile.length - 1] || null;
-    io.emit('oyunDurumu', { basladi: gameStarted, ortadakiKart: ortadaki, hostId: hostId, pendingDraw: pendingDraw });
+    io.emit('oyunDurumu', { 
+        basladi: gameStarted, 
+        ortadakiKart: discardPile[discardPile.length - 1] || null, 
+        hostId: hId, 
+        pendingDraw: pendingDraw 
+    });
     playerIds.forEach(id => {
         if (players[id] && players[id].hand) io.to(id).emit('elimiGuncelle', players[id].hand);
     });
@@ -92,45 +97,44 @@ io.on('connection', (socket) => {
     socket.on('kartAt', (data) => {
         if (!gameStarted || playerIds[currentPlayerIndex] !== socket.id) return;
         let p = players[socket.id];
-        let playedCard = p.hand[data.index];
-        if (!playedCard) return;
+        let card = p.hand[data.index];
+        if (!card) return;
 
-        // YENİ KURAL: Herhangi bir + kartı (2 veya 4) cezayı katlar
-        const isPenaltyCard = (playedCard.deger === '+2' || playedCard.deger === '+4 Çek');
-        
-        if (pendingDraw > 0 && !isPenaltyCard) {
-            socket.emit('hata', '💥 Üzerinde ceza var! Ya + kartıyla katlamalı ya da kart çekmelisin!');
+        const isPlus = (card.deger === '+2' || card.deger === '+4 Çek');
+        if (pendingDraw > 0 && !isPlus) {
+            socket.emit('hata', '⚠️ Cezayı katlamalı veya çekmelisin!');
             return;
         }
 
         let top = discardPile[discardPile.length - 1];
-        // Siyah kartlar her zaman atılabilir, diğerleri renk veya değer eşleşmeli
-        let isValid = (playedCard.renk === 'siyah' || playedCard.renk === top.renk || playedCard.deger === top.deger);
-
-        if (!isValid) {
-            socket.emit('hata', 'Bu kartı şu an atamazsın!');
+        if (card.renk !== 'siyah' && card.renk !== top.renk && card.deger !== top.deger) {
+            socket.emit('hata', '❌ Geçersiz hamle!');
             return;
         }
 
         p.hand.splice(data.index, 1);
-        if (playedCard.renk === 'siyah' && data.secilenRenk) playedCard.renk = data.secilenRenk;
-        discardPile.push(playedCard);
+        if (card.renk === 'siyah' && data.secilenRenk) card.renk = data.secilenRenk;
+        discardPile.push(card);
 
-        // Ceza ekleme
-        if (playedCard.deger === '+2') pendingDraw += 2;
-        else if (playedCard.deger === '+4 Çek') pendingDraw += 4;
+        // TEK KART UYARISI
+        if (p.hand.length === 1) {
+            io.emit('hata', `🔔 DİKKAT: ${p.name} tek kart kaldı!`);
+        }
+
+        if (card.deger === '+2') { pendingDraw += 2; pendingDrawType = '+2'; }
+        if (card.deger === '+4 Çek') { pendingDraw += 4; pendingDrawType = '+4 Çek'; }
 
         if (p.hand.length === 0) {
             p.finished = true;
             winners.push(p);
             if (playerIds.filter(id => !players[id].finished).length <= 1) {
                 gameStarted = false;
-                io.emit('hata', '🏁 Oyun Bitti!');
+                io.emit('hata', '🏆 OYUN BİTTİ! ' + winners.map((w,i)=>`${i+1}.${w.name}`).join(' '));
             }
         }
 
-        if (playedCard.deger === 'Yön Değiştir') direction *= -1;
-        if (playedCard.deger === 'Pas') nextTurn();
+        if (card.deger === 'Yön Değiştir') direction *= -1;
+        if (card.deger === 'Pas') nextTurn();
         
         nextTurn();
         updateAll();
@@ -139,17 +143,13 @@ io.on('connection', (socket) => {
     socket.on('kartCek', () => {
         if (!gameStarted || playerIds[currentPlayerIndex] !== socket.id) return;
         let p = players[socket.id];
-        
         if (pendingDraw > 0) {
-            // Cezayı çekmek istediğinde
             for(let i=0; i<pendingDraw; i++) {
                 if(deck.length === 0) deck = createDeck();
                 p.hand.push(deck.pop());
             }
-            io.emit('hata', `${p.name} toplam ${pendingDraw} kart ceza çekti! 😱`);
-            pendingDraw = 0;
+            pendingDraw = 0; pendingDrawType = null;
         } else {
-            // Normal kart çekme
             if(deck.length === 0) deck = createDeck();
             p.hand.push(deck.pop());
         }
