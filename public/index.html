@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuzenler Kapışıyor</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="oyun-alani">
+        <div id="diger-oyuncular">
+            <h2>Kuzenler Bekleniyor...</h2>
+            <ul id="oyuncu-listesi"></ul>
+        </div>
+
+        <div id="masa">
+            <div class="kart deste" id="deste-cek">Kart Çek</div>
+            <div class="kart ortadaki-kart" id="ortadaki-kart">Oyun Başlamadı</div>
+        </div>
+
+        <div id="benim-elim">
+            <h3>Senin Kartların</h3>
+            <div id="kartlarim" class="kart-kutusu">
+                </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
