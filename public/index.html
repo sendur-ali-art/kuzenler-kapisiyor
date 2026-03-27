@@ -7,14 +7,23 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div id="renk-secici" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; flex-direction: column;">
+        <h2 style="color: white; margin-bottom: 20px; font-size: 32px;">Oyunun Rengi Ne Olsun?</h2>
+        <div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; padding: 20px;">
+            <div class="kart kirmizi" onclick="renkSecildi('kirmizi')">Kırmızı</div>
+            <div class="kart mavi" onclick="renkSecildi('mavi')">Mavi</div>
+            <div class="kart yesil" onclick="renkSecildi('yesil')">Yeşil</div>
+            <div class="kart sari" onclick="renkSecildi('sari')">Sarı</div>
+        </div>
+    </div>
+
     <div id="oyun-alani">
         <div id="kurallar" style="background-color: #fff3cd; padding: 15px; border-radius: 10px; margin-bottom: 20px; font-size: 14px; color: #856404; text-align: left; border: 1px solid #ffeeba;">
             <strong style="font-size: 16px;">📜 Kısaca Kurallar:</strong>
             <ul style="margin-top: 5px; padding-left: 20px; margin-bottom: 0;">
                 <li>Ortadaki kartla aynı <b>renkte</b> veya <b>sayı/sembolde</b> kart atmalısın.</li>
-                <li><b>Siyah kartlar</b> her renge atılabilir ve oyunun rengini değiştirir (Joker).</li>
-                <li>Elinde uygun kart yoksa desteden <b>1 Kart Çek</b>.</li>
-                <li>Tek kartı kalana sistem otomatik "TEK" uyarısı verir. İlk bitiren kazanır! 🏆</li>
+                <li><b>Siyah kartlar</b> her renge atılabilir ve atan kişi rengi belirler.</li>
+                <li>Elinde uygun kart yoksa desteden <b>1 Kart Çek</b>. İlk bitiren kazanır!</li>
             </ul>
         </div>
 
@@ -30,8 +39,7 @@
 
         <div id="benim-elim">
             <h3>Senin Kartların</h3>
-            <div id="kartlarim" class="kart-kutusu">
-                </div>
+            <div id="kartlarim" class="kart-kutusu"></div>
         </div>
     </div>
 
