@@ -46,11 +46,13 @@ socket.on('oyunDurumu', (durum) => {
     sifirlaBtn.style.display = 'inline-block';
     
     if (durum.pendingDraw > 0) {
-        desteCekBtn.innerText = `⚠️ Ceza Çek (${durum.pendingDraw})`;
+        desteCekBtn.innerText = `⚠️ Cezayı Çek (${durum.pendingDraw})`;
         desteCekBtn.style.backgroundColor = '#e74c3c';
+        desteCekBtn.style.animation = 'pulse 1s infinite';
     } else {
         desteCekBtn.innerText = 'Kart Çek';
         desteCekBtn.style.backgroundColor = '#2c3e50';
+        desteCekBtn.style.animation = 'none';
     }
     
     if (durum.ortadakiKart) {
@@ -87,9 +89,9 @@ window.renkSecildi = (renk) => {
 function gosterBildirim(mesaj) {
     let toast = document.createElement('div');
     toast.innerText = mesaj;
-    toast.style.cssText = 'position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background-color: #c0392b; color: white; padding: 15px 25px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.4); z-index: 10000; font-weight: bold; text-align: center;';
+    toast.style.cssText = 'position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background-color: #c0392b; color: white; padding: 15px 25px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.4); z-index: 10000; font-weight: bold; text-align: center; font-family: sans-serif;';
     document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3500);
+    setTimeout(() => toast.remove(), 4000);
 }
 
 desteCekBtn.onclick = () => { socket.emit('kartCek'); };
