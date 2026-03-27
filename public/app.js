@@ -33,8 +33,14 @@ socket.on('oyuncuGuncelleme', (players) => {
     for (let id in players) {
         const p = players[id];
         const li = document.createElement('li');
-        li.innerText = `${p.name} ${p.kartSayisi !== undefined ? `(${p.kartSayisi} Kart)` : '(İzleyici)'}`;
+        
+        // YENİ: Kartı bitenlerin yanına "Bitirdi" yaz, bitmeyenin kart sayısını göster
+        let durumYazisi = p.finished ? '🏁 Bitirdi' : (p.kartSayisi !== undefined ? `(${p.kartSayisi} Kart)` : '(İzleyici)');
+        li.innerText = `${p.name} ${durumYazisi}`;
+        
         if (p.siraOnda) li.style.border = '4px solid #e74c3c'; 
+        else li.style.border = 'none'; // Sırası geçenin çerçevesini kaldır
+        
         oyuncuListesi.appendChild(li);
     }
 });
