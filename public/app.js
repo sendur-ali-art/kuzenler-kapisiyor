@@ -1,6 +1,5 @@
 const socket = io();
 
-// SESLER (Daha güvenilir linkler)
 const sesAt = new Audio('https://www.soundjay.com/buttons/sounds/button-20.mp3');
 const sesCek = new Audio('https://www.soundjay.com/buttons/sounds/button-21.mp3');
 const sesMesaj = new Audio('https://www.soundjay.com/buttons/sounds/button-16.mp3');
@@ -9,13 +8,13 @@ let isim = "";
 while (!isim || !isim.trim()) {
     isim = prompt("Kuzenler Kapışıyor! İsmin nedir?");
 }
-socket.emit('oyunaKatil', isim.trim());
+// İsmi de HTML etiketlerinden arındırarak (güvenli) gönderiyoruz
+socket.emit('oyunaKatil', isim.trim().replace(/</g, "&lt;").replace(/>/g, "&gt;"));
 
 const mesajlarDiv = document.getElementById('mesajlar');
 const mesajInput = document.getElementById('mesaj-metni');
 const mesajGonderBtn = document.getElementById('mesaj-gonder');
 
-// MESAJLAŞMA
 mesajGonderBtn.onclick = () => {
     if (mesajInput.value.trim()) {
         socket.emit('mesajGonder', mesajInput.value);
@@ -25,14 +24,17 @@ mesajGonderBtn.onclick = () => {
 mesajInput.onkeypress = (e) => { if (e.key === 'Enter') mesajGonderBtn.click(); };
 
 socket.on('yeniMesaj', (data) => {
+    // GÜVENLİK YAMASI: Mesajlar HTML kodu olarak değil, saf metin olarak ekleniyor.
     const m = document.createElement('div');
-    m.innerHTML = `<b>${data.isim}:</b> ${data.metin}`;
+    const b = document.createElement('b');
+    b.innerText = data.isim + ': ';
+    m.appendChild(b);
+    m.appendChild(document.createTextNode(data.metin)); // XSS koruması
     mesajlarDiv.appendChild(m);
     mesajlarDiv.scrollTop = mesajlarDiv.scrollHeight;
     sesMesaj.play().catch(() => {});
 });
 
-// OYUN MANTIĞI
 const oyuncuListesi = document.getElementById('oyuncu-listesi');
 const kartlarimDiv = document.getElementById('kartlarim');
 const ortadakiKartDiv = document.getElementById('ortadaki-kart');
@@ -42,12 +44,12 @@ let bekleyenKartIndex = -1;
 
 const baslatBtn = document.createElement('button');
 baslatBtn.innerText = '🚀 BAŞLAT';
-baslatBtn.style.cssText = 'position:fixed; top:70px; right:20px; padding:10px; background:red; color:white; border-radius:10px; display:none; z-index:100; font-weight:bold;';
+baslatBtn.style.cssText = 'position:fixed; top:70px; right:20px; padding:10px; background:red; color:white; border-radius:10px; display:none; z-index:100; font-weight:bold; cursor:pointer; border:none;';
 document.body.appendChild(baslatBtn);
 
 const sifirlaBtn = document.createElement('button');
 sifirlaBtn.innerText = '🔄 SIFIRLA';
-sifirlaBtn.style.cssText = 'position:fixed; top:70px; left:20px; padding:10px; background:orange; color:white; border-radius:10px; z-index:100; font-weight:bold;';
+sifirlaBtn.style.cssText = 'position:fixed; top:70px; left:20px; padding:10px; background:orange; color:white; border-radius:10px; z-index:100; font-weight:bold; cursor:pointer; border:none;';
 document.body.appendChild(sifirlaBtn);
 
 baslatBtn.onclick = () => socket.emit('oyunuBaslat');
@@ -113,7 +115,7 @@ desteCekBtn.onclick = () => {
 socket.on('hata', (m) => {
     const t = document.createElement('div');
     t.innerText = m;
-    t.style.cssText = 'position:fixed; top:10px; left:50%; transform:translateX(-50%); background:#333; color:white; padding:10px; border-radius:10px; z-index:10000;';
+    t.style.cssText = 'position:fixed; top:10px; left:50%; transform:translateX(-50%); background:#333; color:white; padding:10px; border-radius:10px; z-index:10000; box-shadow: 0 4px 6px rgba(0,0,0,0.3);';
     document.body.appendChild(t);
     setTimeout(() => t.remove(), 3000);
 });
