@@ -8,8 +8,24 @@ let isim = "";
 while (!isim || !isim.trim()) {
     isim = prompt("Kuzenler Kapışıyor! İsmin nedir?");
 }
-// İsmi de HTML etiketlerinden arındırarak (güvenli) gönderiyoruz
-socket.emit('oyunaKatil', isim.trim().replace(/</g, "&lt;").replace(/>/g, "&gt;"));
+
+// YENİ: ŞİFRE SORMA EKRANI
+let sifre = "";
+while (!sifre || !sifre.trim()) {
+    sifre = prompt("Lütfen Oda Şifresini Girin:");
+}
+
+// İsim ve Şifreyi sunucuya birlikte gönderiyoruz
+socket.emit('oyunaKatil', {
+    isim: isim.trim().replace(/</g, "&lt;").replace(/>/g, "&gt;"),
+    sifre: sifre.trim()
+});
+
+// YENİ: Yanlış şifre girildiğinde olacaklar
+socket.on('girisHatasi', (mesaj) => {
+    alert(mesaj);
+    window.location.reload(); // Şifreyi tekrar denemesi için sayfayı yenile
+});
 
 const mesajlarDiv = document.getElementById('mesajlar');
 const mesajInput = document.getElementById('mesaj-metni');
@@ -24,12 +40,11 @@ mesajGonderBtn.onclick = () => {
 mesajInput.onkeypress = (e) => { if (e.key === 'Enter') mesajGonderBtn.click(); };
 
 socket.on('yeniMesaj', (data) => {
-    // GÜVENLİK YAMASI: Mesajlar HTML kodu olarak değil, saf metin olarak ekleniyor.
     const m = document.createElement('div');
     const b = document.createElement('b');
     b.innerText = data.isim + ': ';
     m.appendChild(b);
-    m.appendChild(document.createTextNode(data.metin)); // XSS koruması
+    m.appendChild(document.createTextNode(data.metin)); 
     mesajlarDiv.appendChild(m);
     mesajlarDiv.scrollTop = mesajlarDiv.scrollHeight;
     sesMesaj.play().catch(() => {});
