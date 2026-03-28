@@ -37,20 +37,34 @@ function createDeck() {
 
 function updateAll() {
     let hId = playerIds[0]; 
+    let safePlayers = {}; // GÜVENLİK YAMASI: Sadece güvenli verileri tutacağımız obje
+    
     playerIds.forEach((id, i) => {
         if (players[id]) {
             players[id].isHost = (id === hId);
             players[id].kartSayisi = players[id].hand ? players[id].hand.length : 0;
             players[id].siraOnda = (i === currentPlayerIndex && gameStarted && !players[id].finished);
+            
+            // Diğer oyunculara gidecek bilgilerden "hand" (kartlar) çıkartıldı! Kopya çekilemez.
+            safePlayers[id] = {
+                name: players[id].name,
+                isHost: players[id].isHost,
+                kartSayisi: players[id].kartSayisi,
+                siraOnda: players[id].siraOnda,
+                finished: players[id].finished
+            };
         }
     });
-    io.emit('oyuncuGuncelleme', players);
+    
+    io.emit('oyuncuGuncelleme', safePlayers); // Sadece güvenli liste yayınlanır
     io.emit('oyunDurumu', { 
         basladi: gameStarted, 
         ortadakiKart: discardPile[discardPile.length - 1] || null, 
         hostId: hId, 
         pendingDraw: pendingDraw 
     });
+    
+    // Herkesin kendi kartları SADECE kendisine özel (io.to) olarak gönderilir
     playerIds.forEach(id => {
         if (players[id] && players[id].hand) io.to(id).emit('elimiGuncelle', players[id].hand);
     });
@@ -66,12 +80,16 @@ function nextTurn() {
 
 io.on('connection', (socket) => {
     socket.on('oyunaKatil', (isim) => {
+        if(typeof isim !== 'string' || isim.length > 20) isim = "Oyuncu"; // Güvenlik
         players[socket.id] = { id: socket.id, name: isim, hand: [], finished: false };
         if (!gameStarted) playerIds.push(socket.id);
         updateAll();
     });
 
     socket.on('mesajGonder', (metin) => {
+        // GÜVENLİK YAMASI: Mesaj boyutunu ve tipini kontrol et (Sunucu çökertme koruması)
+        if (typeof metin !== 'string' || metin.length > 150) return; 
+        
         if(players[socket.id]) {
             io.emit('yeniMesaj', { isim: players[socket.id].name, metin: metin });
         }
@@ -100,8 +118,13 @@ io.on('connection', (socket) => {
     });
 
     socket.on('kartAt', (data) => {
+        // GÜVENLİK YAMASI: Veri tipini kontrol et (Sunucu çökertme koruması)
+        if (!data || typeof data.index !== 'number') return;
+        
         if (!gameStarted || playerIds[currentPlayerIndex] !== socket.id) return;
         let p = players[socket.id];
+        if (!p || !p.hand) return;
+        
         let card = p.hand[data.index];
         if (!card) return;
 
@@ -145,6 +168,8 @@ io.on('connection', (socket) => {
     socket.on('kartCek', () => {
         if (!gameStarted || playerIds[currentPlayerIndex] !== socket.id) return;
         let p = players[socket.id];
+        if (!p || !p.hand) return;
+        
         if (pendingDraw > 0) {
             for(let i=0; i<pendingDraw; i++) {
                 if(deck.length === 0) deck = createDeck();
